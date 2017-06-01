@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8">
     <title>Test WIL Basic</title>
+    <script
+  src="https://code.jquery.com/jquery-3.2.1.min.js"
+  integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+  crossorigin="anonymous"></script>
   </head>
   <body>
     <div id="disp" class="disp"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -26,9 +30,19 @@
   </tr>
 </tbody>
 </table>
+
+<br>
+<a href="https://docs.google.com/spreadsheets/d/1JQfVq8AYB9E7NQe5tZErDQDls2ynMhTQguZucEwT7ag/edit#gid=0">Google document of submitted corrections</a>
 </div>
 <!--
-  <script type="text/javascript" src="corrections.js" </script>
+Code based on: https://mashe.hawksey.info/2014/07/google-sheets-as-a-database-insert-with-apps-script-using-postget-methods-with-ajax-example/
+Following links are used for tests by Ilya Juhnowski
+
+Document: https://docs.google.com/spreadsheets/d/1JQfVq8AYB9E7NQe5tZErDQDls2ynMhTQguZucEwT7ag/edit#gid=0
+Google App Script:
+https://script.google.com/macros/s/AKfycbwYqRmJ8Ei7DgsnkmnC69YijpYdH9IOcPJEN0EEnk9GZa7DFQwJ/exec
+
+TODO: change document and app links
   -->
 <script>
 
@@ -47,6 +61,48 @@
       };
     });
     return res;
+  }
+
+    function getCookie(name) {
+    var matches = document.cookie.match(new RegExp(
+      "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+    ));
+    return matches ? decodeURIComponent(matches[1]) : undefined;
+  }
+
+  function setCookie(name, value, options) {
+    options = options || {};
+
+    var expires = options.expires;
+
+    if (typeof expires == "number" && expires) {
+      var d = new Date();
+      d.setTime(d.getTime() + expires * 1000);
+      expires = options.expires = d;
+    }
+    if (expires && expires.toUTCString) {
+      options.expires = expires.toUTCString();
+    }
+
+    value = encodeURIComponent(value);
+
+    var updatedCookie = name + "=" + value;
+
+    for (var propName in options) {
+      updatedCookie += "; " + propName;
+      var propValue = options[propName];
+      if (propValue !== true) {
+        updatedCookie += "=" + propValue;
+      }
+    }
+
+    document.cookie = updatedCookie;
+  }
+
+  function deleteCookie(name) {
+    setCookie(name, "", {
+      expires: -1
+    })
   }
 
   window.onload =function () {
@@ -70,9 +126,22 @@
 //TODO: convert to SLP1
         var currenthw = pelem.getElementsByClassName("sdata")[0].innerHTML;
         var correcthw = prompt("Correct form for SLP1 transliteration correcthw:", currenthw);
-        var errorcode = prompt("p - print error; t - typo; n - no change errorcode:", "");
-        var note = prompt("note", "");
+        var errorcode = prompt("p - print error; t - typo; n - no change errorcode:", "t");
+        var note = prompt("note", "typo");
         var text = dictcode+":"+currenthw +","+lnum +":"+correcthw+":"+errorcode+":"+note;
+
+        if (!navigator.cookieEnabled) {
+          alert( 'Please switch on cookie for stor yours email used for corrector\'s identification');
+        }
+        var email;
+        if (getCookie("email") == undefined) {
+          email = prompt("Email for corrector's identification:", "name@gmail.com");
+          setCookie("email",email,{});
+          console.log("setCookie");
+        } else {
+          email = getCookie("email");
+        }
+
         var copyFrom = document.createElement("textarea");
         copyFrom.textContent = text;
         var body = document.getElementsByTagName('body')[0];
@@ -80,6 +149,24 @@
         copyFrom.select();
         document.execCommand('copy');
         body.removeChild(copyFrom);
+
+        var data = {};
+        data.dictcode = dictcode;
+        data.currenthw = currenthw;
+        data.lnum = lnum;
+        data.correcthw = correcthw;
+        data.errorcode = errorcode;
+        data.note = note;
+        data.email = email;
+        var serializedData = JSON.stringify(data);
+        console.log("serializedData="+serializedData);
+// send data to google service
+        request = $.ajax({
+            url: "https://script.google.com/macros/s/AKfycbzV--xTooSkBLufMs4AnrCTdwZxVNtycTE4JNtaCze2UijXAg8/exec",
+            type: "post",
+            data: serializedData
+        });
+
       }
 
     }
